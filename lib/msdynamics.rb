@@ -22,7 +22,7 @@ class MSDynamics
     @hostname = config[:hostname]
     @client_id = config[:client_id]
     @client_secret = config[:client_secret]
-    @endpoint = "#{@hostname}/api/data/v8.0/"
+    @endpoint = "#{@hostname}/api/data/v9.0/"
     # Get the authenticated user's information ('WhoAmI')
     # This also validates the access tokens and client secrets.
     # If validation fails, it will raise an exception back to the calling app.
