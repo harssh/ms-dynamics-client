@@ -10,18 +10,20 @@ class MSDynamics
   #
   # config - A configuration object.
   def initialize(config={
-      hostname: nil, access_token: nil, refresh_token: nil,
+      hostname: nil, access_token: nil, tenant_id: nil,
       client_id: nil, client_secret: nil})
     # Validate the input.
-    if config[:hostname].nil?  && config[:access_token].nil?
-      raise RuntimeError.new("hostname and access_token are required")
+    if config[:hostname].nil?  && config[:tenant_id].nil? && config[:client_secret].nil? && config[:client_id].nil?
+      raise RuntimeError.new("hostname, client secret, client id and tenant_id are required")
     end
     # Set up the variables
-    @access_token = config[:access_token]
-    @refresh_token = config[:refresh_token]
+
+    @tenant_id = config[:tenant_id]
     @hostname = config[:hostname]
     @client_id = config[:client_id]
     @client_secret = config[:client_secret]
+    @access_token = MSDynamics.get_token("https://login.microsoftonline.com/#{@tenant_id}/oauth2/v2.0/token",
+      @client_id, @client_secret, @hostname)
     @endpoint = "#{@hostname}/api/data/v9.0/"
     # Get the authenticated user's information ('WhoAmI')
     # This also validates the access tokens and client secrets.
@@ -50,10 +52,9 @@ class MSDynamics
   #        ]
   #
   # Returns an object with all records for the given entity.
-  def get_entity_records(entity_name="")
+  def get_entity_records(entity_name="", filter="",limit="")
     # Add a filter so we only get records that belong to the authenticated user.
-    filter = "_ownerid_value eq (#{@user_id})"
-    request_url = "#{@endpoint}#{entity_name}?$filter=#{filter}"
+    request_url = "#{@endpoint}#{entity_name}?#{limit}"
     # Return the array of records
     response = DynamicsHTTPClient.request(request_url, @access_token)
     Hashie::Mash.new(JSON.parse(response.body)).value
@@ -61,12 +62,22 @@ class MSDynamics
 
   def refresh_token()
     response = DynamicsHTTPClient.refresh_token(
-      "https://login.windows.net/common/oauth2/token", @refresh_token,
+      "https://login.microsoftonline.com/#{@tenant_id}/oauth2/v2.0/token",
       @client_id, @client_secret, @hostname)
     token_object = Hashie::Mash.new(JSON.parse(response.body))
     @access_token = token_object.access_token
     @refresh_token = token_object.refresh_token
     token_object
+  end
+
+
+  def self.get_token(url="", client_id="", client_secret="", resource="")
+    response = DynamicsHTTPClient.refresh_token(
+      url,client_id, client_secret, resource)
+    token_object = Hashie::Mash.new(JSON.parse(response.body))
+    @access_token = token_object.access_token
+    puts token_object
+    @access_token
   end
 
 end
@@ -94,14 +105,12 @@ class DynamicsHTTPClient
   end
 
   # Allows refreshing an oAuth access token.
-  def self.refresh_token(url="", refresh_token="",
-                         client_id="", client_secret="", resource="")
+  def self.refresh_token(url="", client_id="", client_secret="", resource="")
     params = {
-      'refresh_token' => refresh_token,
       'client_id'     => client_id,
       'client_secret' => client_secret,
-      'grant_type'    => 'refresh_token',
-      'resource'      => resource
+      'grant_type'    => 'client_credentials',
+      'scope'      => resource + "/.default"
     }
     uri = URI(url)
     Net::HTTP::post_form(uri, params)

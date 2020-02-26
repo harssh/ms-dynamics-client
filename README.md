@@ -23,21 +23,27 @@ To obtain the initial access and refresh tokens you can use [OmniAuth](https://g
 ```ruby
 client = MSDynamics.new({
     hostname: "https://test.crm3.dynamics.com",
-    access_token: "djhksjdhu3ye83y",
-    refresh_token: "djhksjdhu3ye83y",
+    tenant_id: "djhksjdhu3ye83y",
     client_id: "absjkdh3ewrwr",
     client_secret: "djskdhak82u3kjhk"
 })
 ```
+### Arguments
+1. hostname  : Host URL for dynamics instance.
+2. tenant_id   : tenant_id of the Dynamics App created for S2S API communication
+3. client_id   : client_id of the Dynamics App created for S2S API communication
+4. client_secret   : client_secret of the Dynamics App created for S2S API communication
+
+To set up API user you will need to create an Application User and assign the Application ID to this user. User Role of Application User decides to what entities this client will have access to.
 
 ### Retrieving entity records
 
 Entity types are: `accounts`, `contacts`, `leads` and `opportunities`
 ```ruby
-accounts = client.get_entity_records('accounts')
-contacts = client.get_entity_records('contacts')
-leads = client.get_entity_records('leads')
-opportunities = client.get_entity_records('opportunities')
+accounts = client.get_entity_records('accounts', "$top3")
+contacts = client.get_entity_records('contacts', "$top3")
+leads = client.get_entity_records('leads', "$top3")
+opportunities = client.get_entity_records('opportunities', "$top3")
 ```
 
 ### Modifying or creating entity records
