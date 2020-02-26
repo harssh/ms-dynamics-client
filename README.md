@@ -19,7 +19,9 @@ Or install it yourself as:
 
 #### Access token authentication
 
-To obtain the initial access and refresh tokens you can use [OmniAuth](https://github.com/omniauth/omniauth) in combination with [OmniAuth Azure](https://github.com/KonaTeam/omniauth-azure-oauth2)
+To obtain access token you will need to create Dynamics application at portal.azure.com and setup callback urls and secret code. Provide API permissions. This keeps API access under Dynamics control.
+Than create Application User in Dynamics and provide Application ID from Azure Portal to this user. Providing all access the APP has to this Application User. Also Update Application User role according to your requirements.
+
 ```ruby
 client = MSDynamics.new({
     hostname: "https://test.crm3.dynamics.com",
