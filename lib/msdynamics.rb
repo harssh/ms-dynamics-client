@@ -28,7 +28,7 @@ class MSDynamics
     # Get the authenticated user's information ('WhoAmI')
     # This also validates the access tokens and client secrets.
     # If validation fails, it will raise an exception back to the calling app.
-    response = DynamicsHTTPClient.request("#{@endpoint}WhoAmI", @access_token)
+    response = DynamicsHTTPClient.index("#{@endpoint}WhoAmI", @access_token)
     @user_id = JSON.parse(response.body)['UserId']
   end
 
@@ -52,11 +52,20 @@ class MSDynamics
   #        ]
   #
   # Returns an object with all records for the given entity.
-  def get_entity_records(entity_name="", filter="",limit="")
+  def get_entity_records(entity_name="", params="")
     # Add a filter so we only get records that belong to the authenticated user.
-    request_url = "#{@endpoint}#{entity_name}?#{limit}"
+    request_url = "#{@endpoint}#{entity_name}?#{params}"
     # Return the array of records
-    response = DynamicsHTTPClient.request(request_url, @access_token)
+    response = DynamicsHTTPClient.index(request_url, @access_token)
+    Hashie::Mash.new(JSON.parse(response.body)).value
+  end
+
+
+  def update_entity_records(entity_name="", params="")
+    # Add a filter so we only get records that belong to the authenticated user.
+    request_url = "#{@endpoint}#{entity_name}"
+    # Return the array of records
+    response = DynamicsHTTPClient.update(request_url, @access_token, params)
     Hashie::Mash.new(JSON.parse(response.body)).value
   end
 
@@ -85,12 +94,39 @@ end
 # Private: Methods for making HTTP requests to the Dynamics Web API.
 class DynamicsHTTPClient
   # Sends a HTTP request.(GET)
-  def self.request(url="", access_token="")
+  def self.index(url="", access_token="")
       uri = URI(URI.encode(url))
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = (uri.scheme == "https")
       request = Net::HTTP::Get.new(uri)
       request["Authorization"] = "Bearer #{access_token}"
+      response = http.request(request)
+      if response.code != '200'
+        if response.code == '401'
+          # Ughhh! MS Dynamics puts the 401 error messages in the body!
+          error_message = response.body
+        else
+          error_message = JSON.parse(response.body)['error']['message']
+        end
+        raise RuntimeError.new(error_message)
+      end
+      response
+  end
+
+
+
+  def self.update(url="", access_token="", data="")
+      uri = URI(URI.encode(url))
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = (uri.scheme == "https")
+      request = Net::HTTP::Patch.new(uri)
+      request["Authorization"] = "Bearer #{access_token}"
+      request["Accept"] = "application/json"
+      request["Content-Type"] = "application/json; charset=utf-8"
+      request["OData-MaxVersion"] = "4.0"
+      request["OData-Version"] = "4.0"
+      request["Prefer"] = "return=representation"
+      request.body = data
       response = http.request(request)
       if response.code != '200'
         if response.code == '401'
